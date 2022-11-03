@@ -5,8 +5,8 @@
 using namespace std;
 using namespace chrono;
 
-#define MAX 32 + 1 // 요소 32개인 경우
-// #define MAX 1024 + 1 // 요소 1024개인 경우
+// #define MAX 32 + 1 // 요소 32개인 경우
+#define MAX 1024 + 1 // 요소 1024개인 경우
 
 int arr[MAX];  
 int compcount = 0; // 비교 횟수
@@ -48,6 +48,7 @@ int m_arr[MAX];
 int q_arr[MAX];
 int rq_arr[MAX];
 int mq_arr[MAX];
+int dq_arr[MAX];
 
 
 void swap(int* p, int* q)
@@ -154,10 +155,10 @@ void merge(int arr[], int p, int q, int r)
 }
 
 void mergeSort(int arr[], int p, int r) {
-    if (p < r)
+    if (compCountV1(p, r)) // p < r
     {
         int q = (p + r) / 2; // 가운데 요소의 index를 q로 지정
-        mergeSort(arr, p, q); // 둘로 나눈 배열을 다시 divide
+        mergeSort(arr, p, q); // 둘로 나눈 배열을 다시 divide. recursive
         mergeSort(arr, q + 1, r); 
         merge(arr, p, q, r); // 둘로 나눈 배열을 합병
     }  
@@ -170,12 +171,15 @@ int partition(int arr[], int p, int r)
     int i = p-1;
     for(int j = p;j<=r-1;j++)
     {
+        // pivot보다 작은 값의 경우
         if(compCountV2(arr[j], x)) // arr[j] <= x
         {
+            // i의 값을 하나 증가시키고 해당 자리와 swap
             i++;
             swap(arr[i], arr[j]);
         }
     }
+    // pivot보다 작은 요소들이 모두 앞으로 모엿으면 그 다음 자리와 pivot을 swap
     swap(arr[i+1], arr[r]);
     return i+1;
 }
@@ -184,6 +188,7 @@ void quickSort(int arr[], int p, int r)
 {
     if (compCountV1(p, r)) // p < r
     {
+        // q를 기준으로 두 개의 배열로 나눠 각각의 배열에 대하여 다시 quicksort를 함. recursive
         int q = partition(arr, p, r);
         quickSort(arr, p, q-1);
         quickSort(arr, q+1, r);
@@ -234,27 +239,68 @@ void medianQuickSort(int arr[], int p, int r)
     }
 }
 
-int middleValuePartition(int arr[], int p, int r) // 전체 배열의 가운데 index를 pivot으로 하는 quick sort
+void dualPivotQuickSort(int arr[], int p, int r)
 {
-    int q = (p + r) / 2;
-    return partition(arr, p, r);
-}
-
-void middleValueQuickSort(int arr[], int p, int r)
-{
-    if (compCountV1(p, r)) // p < r
+    if(compCountV2(p, r)) // p <= r
     {
-        int q = middleValuePartition(arr, p, r);
-        middleValueQuickSort(arr, p, q-1);
-        middleValueQuickSort(arr, q+1, r);
+        // pivot1이 pivot2보다 크다면 서로 자리를 바꿔줌
+        if(compCountV1(arr[r], arr[p])) // arr[r] < arr[p]
+            swap(arr[p], arr[r]);
+
+        int pivot1 = arr[p], pivot2 = arr[r]; // 양 끝 2개의 요소를 각 pivot1과 pivo2로
+        int l, k, g;
+        // k : sort 진행 중일 때 배열을 지나가며 각 요소의 index를 저장
+
+        l = k = p + 1; // l : pivot1보다 작은 값이 들어갈 다음 위치
+        g = r - 1; // g : pivot2보다 큰 값이 들어갈 다음 위치
+
+        while(compCountV2(k, g)) // k <= g
+        {
+            // pivot1보다 작은 값은 pivot1의 앞에 들어감
+            if(compCountV1(arr[k], pivot1)) // arr[k] < pivot1
+            {
+                swap(arr[k], arr[l]);
+                l++;
+            }
+            else // pivot1보다 큰 값의 경우
+            {
+                // 그중 pivot2보다 큰 값은 pivot2의 뒤에 들어감
+                if(compCountV1(pivot2, arr[k])) // pivot2 < arr[k]
+                {
+                    while(compCountV1(pivot2, arr[g]) && compCountV1(k, g)) // (pivot2 < arr[g]) && (k < g)
+                        g--;
+
+                    swap(arr[k], arr[g]);
+                    g--;
+                    
+                    // arr[k]가 pivot1보다 작으면 자기 자리가 아님
+                    if(compCountV1(arr[k], pivot1)) // arr[k] < pivot1
+                    {
+                        swap(arr[k], arr[l]);
+                        l++;
+                    }
+                }
+            }
+            k++;
+        }
+        l--;
+        g++;
+        
+        swap(arr[p], arr[l]);
+        swap(arr[r], arr[g]);
+
+        dualPivotQuickSort(arr, p, l-1);
+        dualPivotQuickSort(arr, l+1, g-1);
+        dualPivotQuickSort(arr, g+1, r);
     }
 }
 
+
 int main()
 {
-    typedef duration<double, milli> doublemillisec;
-    // makeRandomArray(); // random한 수들로 배열을 생성
-    makeSortedArray(); // sorted된 배열 생성
+    typedef duration<double, milli> doublemillisec; // 시스템 시간을 측정하기 위함.
+    makeRandomArray(); // random한 수들로 배열을 생성ㄱ
+    // makeSortedArray(); // sorted된 배열 생성
 
     // input 배열의 요소들을 output할 배열에 copy
     for(int i=0;i<MAX;i++){
@@ -264,9 +310,10 @@ int main()
         q_arr[i] = arr[i];
         rq_arr[i] = arr[i];
         mq_arr[i] = arr[i];
+        dq_arr[i] = arr[i];
     }
     // 원래 배열
-    cout << "========== Original Array ==========" << endl;
+    cout << "==================== Original Array ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << arr[i] << ' ';
@@ -278,7 +325,7 @@ int main()
     system_clock::time_point begin = system_clock::now(); // Sorting 시작 전  시스템 시간
     insertionSort(i_arr);
     system_clock::time_point end = system_clock::now(); // Sorting 끝난 직후 시스템 시간
-    cout << "========== Insertion Sort ==========" << endl;
+    cout << "==================== Insertion Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << i_arr[i] << ' ';
@@ -292,7 +339,7 @@ int main()
     begin = system_clock::now();
     heapSort(h_arr);
     end = system_clock::now();
-    cout << "========== Heap Sort ==========" << endl;
+    cout << "==================== Heap Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << h_arr[i] << ' ';
@@ -306,7 +353,7 @@ int main()
     begin = system_clock::now();
     mergeSort(m_arr, 1, MAX-1);
     end = system_clock::now();
-    cout << "========== Merge Sort ==========" << endl;
+    cout << "==================== Merge Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << m_arr[i] << ' ';
@@ -320,7 +367,7 @@ int main()
     begin = system_clock::now();
     quickSort(q_arr, 1, MAX-1);
     end = system_clock::now();
-    cout << "========== Quick Sort ==========" << endl;
+    cout << "==================== Quick Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << q_arr[i] << ' ';
@@ -334,7 +381,7 @@ int main()
     begin = system_clock::now();
     randomizedQuickSort(rq_arr, 1, MAX-1);
     end = system_clock::now();
-    cout << "========== Randomized Quick Sort ==========" << endl;
+    cout << "==================== Randomized Quick Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << rq_arr[i] << ' ';
@@ -348,10 +395,24 @@ int main()
     begin = system_clock::now();
     medianQuickSort(mq_arr, 1, MAX-1);
     end = system_clock::now();
-    cout << "========== Median Quick Sort ==========" << endl;
+    cout << "==================== Median Quick Sort ====================" << endl;
     for(int i=1;i<MAX;i++)
     {
         cout << mq_arr[i] << ' ';
+    }
+    cout << endl << "compcount : " << compcount << endl;
+    doubleMilliSec = duration_cast<doublemillisec>(end - begin);
+    cout << "Sort time : " << doubleMilliSec.count() << endl;
+
+    
+    compcount = 0;
+    begin = system_clock::now();
+    dualPivotQuickSort(dq_arr, 1, MAX-1);
+    end = system_clock::now();
+    cout << "==================== DualPivot Quick Sort ====================" << endl;
+    for(int i=1;i<MAX;i++)
+    {
+        cout << dq_arr[i] << ' ';
     }
     cout << endl << "compcount : " << compcount << endl;
     doubleMilliSec = duration_cast<doublemillisec>(end - begin);
